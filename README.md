@@ -14,7 +14,7 @@ This setup comes pre-installed with Python, Node.js, and Docker, which are commo
 - Clone this repository.
 
 ```
-git clone https://github.com/statefb/aws-ec2-prototyping-environment
+git clone https://github.com/aws-samples/ec2-setup-for-prototyping
 ```
 
 - Run the script. The first argument should be the access source IP's CIDR, the second argument is the stack name. **Substitute `XX.XX.XX.XX` to your environment accordingly.**
