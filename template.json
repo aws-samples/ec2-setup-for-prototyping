@@ -1,0 +1,177 @@
+{
+  "Parameters": {
+    "Ipv4": {
+      "Type": "String",
+      "Description": "CIDR for external access"
+    },
+    "VpcId": {
+      "Type": "String",
+      "Description": "VPC ID"
+    },
+    "SubnetId": {
+      "Type": "String",
+      "Description": "Subnet ID"
+    },
+    "InstanceType": {
+      "Type": "String",
+      "Description": "Instance type",
+      "Default": "t2.large"
+    },
+    "VolumeSize": {
+      "Type": "Number",
+      "Description": "Instance Volume Size",
+      "Default": 128
+    },
+    "ImageId": {
+      "Type": "AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>",
+      "Default": "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-x86_64"
+    }
+  },
+  "Resources": {
+    "KeyPair": {
+      "Type": "AWS::EC2::KeyPair",
+      "Properties": {
+        "KeyName": { "Fn::Sub": "prototype-key-pair-${AWS::StackName}" }
+      },
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete"
+    },
+    "SecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": { "Fn::Sub": "${AWS::StackName}/SecurityGroup" },
+        "SecurityGroupEgress": [
+          {
+            "CidrIp": "0.0.0.0/0",
+            "Description": "Allow all outbound traffic by default",
+            "IpProtocol": "-1"
+          }
+        ],
+        "SecurityGroupIngress": [
+          {
+            "CidrIp": { "Ref": "Ipv4" },
+            "Description": "Allow SSH Access",
+            "FromPort": 22,
+            "IpProtocol": "tcp",
+            "ToPort": 22
+          }
+        ],
+        "VpcId": { "Ref": "VpcId" }
+      }
+    },
+    "InstanceRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "ec2.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/AmazonSSMManagedInstanceCore"
+              ]
+            ]
+          },
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/AdministratorAccess"
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    "InstanceProfile": {
+      "Type": "AWS::IAM::InstanceProfile",
+      "Properties": {
+        "Roles": [
+          {
+            "Ref": "InstanceRole"
+          }
+        ]
+      }
+    },
+    "Instance": {
+      "Type": "AWS::EC2::Instance",
+      "Properties": {
+        "BlockDeviceMappings": [
+          {
+            "DeviceName": "/dev/xvda",
+            "Ebs": {
+              "Encrypted": true,
+              "VolumeSize": { "Ref": "VolumeSize" }
+            }
+          }
+        ],
+        "IamInstanceProfile": {
+          "Ref": "InstanceProfile"
+        },
+        "ImageId": { "Ref": "ImageId" },
+        "InstanceType": { "Ref": "InstanceType" },
+        "KeyName": {
+          "Ref": "KeyPair"
+        },
+        "SecurityGroupIds": [
+          {
+            "Fn::GetAtt": ["SecurityGroup", "GroupId"]
+          }
+        ],
+        "SubnetId": { "Ref": "SubnetId" },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "Instance for prototype"
+          }
+        ],
+        "UserData": {
+          "Fn::Base64": "#!/bin/bash\nsudo yum install -y nodejs docker\nsudo yum install -y jq tree python3-pip git\nsudo systemctl enable docker\nsudo systemctl start docker"
+        }
+      },
+      "DependsOn": ["InstanceRole"]
+    }
+  },
+  "Outputs": {
+    "GetSSHKeyCommand": {
+      "Value": {
+        "Fn::Join": [
+          "",
+          [
+            "aws ssm get-parameter --name /ec2/keypair/",
+            {
+              "Fn::GetAtt": ["KeyPair", "KeyPairId"]
+            },
+            {
+              "Fn::Sub": " --region ${AWS::Region} --with-decryption --query Parameter.Value --output text"
+            }
+          ]
+        ]
+      }
+    },
+    "HostPublicIp": {
+      "Value": {
+        "Fn::GetAtt": ["Instance", "PublicIp"]
+      }
+    }
+  }
+}
