@@ -48,7 +48,7 @@ When running the script, you can specify the instance type, volume size, and ima
 
 - Instance Type: `t2.large`
 - Volume Size: `128GB`
-- Image ID: []`/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-x86_64`](https://docs.aws.amazon.com/linux/al2023/ug/ec2.html)
+- Image ID: [/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-x86_64](https://docs.aws.amazon.com/linux/al2023/ug/ec2.html)
 
 If you want to use specific settings, use the following command-line options:
 
