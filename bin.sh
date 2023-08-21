@@ -9,6 +9,7 @@ Ipv4=$1
 StackName=$2
 InstanceType=$3
 VolumeSize=$4
+ImageId=$5
 
 VPC_ID=$(aws ec2 describe-vpcs --filters "Name=isDefault,Values=true" --query "Vpcs[0].VpcId" --output text)
 echo "Default VPC ID is: $VPC_ID"
@@ -25,6 +26,10 @@ fi
 
 if [[ -n "$VolumeSize" ]]; then
   parameters+=" ParameterKey=VolumeSize,ParameterValue=$VolumeSize"
+fi
+
+if [[ -n "$ImageId" ]]; then
+  parameters+=" ParameterKey=ImageId,ParameterValue=$ImageId"
 fi
 
 stackId=$(aws cloudformation create-stack \
